@@ -6,7 +6,7 @@ class ModelService:
     def __init__(self, repo_id:str, file_name:str, revision:str):
         model_path = self._download_model(repo_id, file_name, revision)
         self.session = onnxruntime.InferenceSession(
-            self.model_path,
+            model_path,
             providers=['CPUExecutionProvider']
         )
         
