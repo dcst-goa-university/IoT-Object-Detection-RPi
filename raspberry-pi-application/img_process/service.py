@@ -22,4 +22,4 @@ class ImageProcessService:
         img = np.transpose(img, (2, 0, 1))
         # Add batch dimension
         img = np.expand_dims(img, axis=0)
-        return img 
+        return img
