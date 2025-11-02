@@ -215,4 +215,4 @@ __marimo__/
 .streamlit/secrets.toml
 
 # YOLO model files
-model/*.pt
+raspberry-pi-application/model/*.pt
