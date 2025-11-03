@@ -1,43 +1,41 @@
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 import cv2
-import numpy as np
+
 from model.service import ModelService
 from img_process.service import ImageProcessService
 from viz.service import VisualizeService
 from streamio.service import StreamIOService
 
 
-def main():
-    # Initialize services
-    model = ModelService(
-        repo_id="SpotLab/YOLOv8Detection",
-        file_name="yolov8n.onnx",
-        revision="3005c67"
+modelService = ModelService("yolov8n.pt")
+imageProcessService = ImageProcessService()
+visualizeService = VisualizeService()
+streamIOService = StreamIOService()
+
+app = FastAPI()
+
+def frame_generator():
+    while True:
+        frame = streamIOService.get_frame()
+        resized = imageProcessService.resize_image(frame)
+        detections = modelService.infer(resized)
+        annotated = visualizeService.draw_boxes(resized, detections)
+
+        # Encode as JPEG
+        _, buffer = cv2.imencode(".jpg", annotated)
+        frame_bytes = buffer.tobytes()
+
+        yield (
+            b"--frame\r\n"
+            b"Content-Type: image/jpeg\r\n\r\n" + frame_bytes + b"\r\n"
+        )
+
+
+@app.get("/stream")
+def stream_endpoint():
+    return StreamingResponse(
+        frame_generator(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
     )
-    image_proc = ImageProcessService()
-    visualizer = VisualizeService(conf_thresh=0.4, min_box_size=32)
-    stream = StreamIOService(camera_index=0)
 
-    # Capture one frame
-    frame = stream.get_frame()
-
-    # Preprocess
-    resized = image_proc.resize_image(frame, (640, 640))
-    tensor = image_proc.to_numpy_tensor(resized)
-
-    # Inference
-    detections = model.infer(tensor)
-
-    # Visualization
-    output = visualizer.draw_boxes(frame, detections)
-
-    # Display
-    cv2.imshow("YOLOv8 Inference (1 Frame)", output)
-    print("✅ Press any key to close window")
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    stream.release()
-
-
-if __name__ == "__main__":
-    main()
